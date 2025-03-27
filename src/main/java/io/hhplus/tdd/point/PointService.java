@@ -6,6 +6,8 @@ import io.hhplus.tdd.exception.ExceedMaximumPointException;
 import io.hhplus.tdd.exception.InvalidPointAmountException;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 @Service
 public class PointService {
 
@@ -50,5 +52,9 @@ public class PointService {
 
     public UserPoint getPoint(long userId) {
         return userPointTable.selectById(userId);
+    }
+
+    public List<PointHistory> getPointHistories(long userId) {
+        return pointHistoryTable.selectAllByUserId(userId);
     }
 }
