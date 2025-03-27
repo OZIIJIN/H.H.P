@@ -2,6 +2,7 @@ package io.hhplus.tdd;
 
 import io.hhplus.tdd.database.PointHistoryTable;
 import io.hhplus.tdd.database.UserPointTable;
+import io.hhplus.tdd.exception.ExceedMaximumPointException;
 import io.hhplus.tdd.exception.InvalidPointAmountException;
 import io.hhplus.tdd.point.PointHistory;
 import io.hhplus.tdd.point.PointService;
@@ -39,7 +40,7 @@ public class PointServiceTest {
     }
 
     @Test
-    void charge_whenAmountIsNegative_thenThrowException() {
+    void charge_fail_invalid_point() {
         //db 사용자 포인트 조회 -> 포인트 충전 -> 에러 발생
         //given
         UserPoint userPoint = new UserPoint(1L, 1000L, 0L);
@@ -50,6 +51,22 @@ public class PointServiceTest {
                 pointService.charge(1L, -5000L));
 
         assertEquals("포인트 충전 금앱은 0보다 커야 합니다.", ex.getMessage());
+
+        then(userPointTable).should(never()).insertOrUpdate(anyLong(), anyLong());
+    }
+
+    @Test
+    void charge_fail_over_point() {
+        //db 사용자 포인트 조회 -> 포인트 충전 -> 에러 발생
+        //given
+        UserPoint userPoint = new UserPoint(1L, 1000000L, 0L);
+        given(userPointTable.selectById(1L)).willReturn(userPoint);
+
+        //when & then
+        ExceedMaximumPointException ex = assertThrows(ExceedMaximumPointException.class, () ->
+                pointService.charge(1L, 1000L));
+
+        assertEquals("최대 포인트를 초과하셨습니다.", ex.getMessage());
 
         then(userPointTable).should(never()).insertOrUpdate(anyLong(), anyLong());
     }

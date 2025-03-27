@@ -12,7 +12,9 @@ class ApiControllerAdvice extends ResponseEntityExceptionHandler {
         return ResponseEntity.status(500).body(new ErrorResponse("500", "예상치 못한 에러가 발생했습니다."));
     }
 
-    @ExceptionHandler(value = InvalidPointAmountException.class)
+    @ExceptionHandler(
+            value = {InvalidPointAmountException.class,
+                    ExceedMaximumPointException.class})
     public ResponseEntity<ErrorResponse> handleException(InvalidPointAmountException e) {
         return ResponseEntity.status(500).body(new ErrorResponse("500", e.getMessage()));
     }
