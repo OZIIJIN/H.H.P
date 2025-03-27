@@ -12,6 +12,7 @@ import org.apache.catalina.User;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.web.servlet.result.RequestResultMatchers;
@@ -19,9 +20,10 @@ import org.springframework.test.web.servlet.result.RequestResultMatchers;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
-import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 public class PointServiceTest {
@@ -36,7 +38,7 @@ public class PointServiceTest {
 
     @BeforeEach
     void setUp() {
-        pointService = new PointService(userPointTable);
+        pointService = new PointService(userPointTable, pointHistoryTable);
     }
 
     @Test
@@ -44,11 +46,9 @@ public class PointServiceTest {
         //db 사용자 포인트 조회 -> 포인트 충전 -> 에러 발생
         //given
         UserPoint userPoint = new UserPoint(1L, 1000L, 0L);
-        given(userPointTable.selectById(1L)).willReturn(userPoint);
 
         //when & then
-        InvalidPointAmountException ex = assertThrows(InvalidPointAmountException.class, () ->
-                pointService.charge(1L, -5000L));
+        InvalidPointAmountException ex = assertThrows(InvalidPointAmountException.class, () -> pointService.charge(1L, -5000L));
 
         assertEquals("포인트 충전 금앱은 0보다 커야 합니다.", ex.getMessage());
 
@@ -63,8 +63,7 @@ public class PointServiceTest {
         given(userPointTable.selectById(1L)).willReturn(userPoint);
 
         //when & then
-        ExceedMaximumPointException ex = assertThrows(ExceedMaximumPointException.class, () ->
-                pointService.charge(1L, 1000L));
+        ExceedMaximumPointException ex = assertThrows(ExceedMaximumPointException.class, () -> pointService.charge(1L, 1000L));
 
         assertEquals("최대 포인트를 초과하셨습니다.", ex.getMessage());
 
@@ -76,13 +75,12 @@ public class PointServiceTest {
         //db 사용자 포인트 조회 -> 포인트 충전 -> 포인트 업데이트 -> 포인트 내역 업데이트
         //given
         Long chargeAmount = 5000L;
-        UserPoint existinUserPoint = new UserPoint(1L, 1000L, 0L);
-        UserPoint updatedUserPoint = new UserPoint(1L, 6000L, 0L);
-        PointHistory pointHistory = new PointHistory(2L, 1L, 5000L, TransactionType.CHARGE, 0L);
+        UserPoint existinUserPoint = new UserPoint(1L, 1000L, System.currentTimeMillis());
+        UserPoint updatedUserPoint = new UserPoint(1L, 6000L, System.currentTimeMillis());
+        PointHistory pointHistory = new PointHistory(2L, 1L, 5000L, TransactionType.CHARGE, System.currentTimeMillis());
 
         given(userPointTable.selectById(1L)).willReturn(existinUserPoint);
         given(userPointTable.insertOrUpdate(1L, 6000L)).willReturn(updatedUserPoint);
-        given(pointHistoryTable.insert(1L, 5000L, TransactionType.CHARGE, 0L)).willReturn(pointHistory);
 
         //when
         UserPoint result = pointService.charge(1L, 5000L);
@@ -90,7 +88,15 @@ public class PointServiceTest {
         //then
         assertEquals(6000L, result.point());
         then(userPointTable).should().selectById(1L);
-         then(userPointTable).should().insertOrUpdate(1L, 6000L);
+        then(userPointTable).should().insertOrUpdate(1L, 6000L);
+        then(pointHistoryTable).should(times(1)).insert(eq(1L), eq(5000L), eq(TransactionType.CHARGE), anyLong());
+
+        //호출 순서 검증
+        InOrder inOrder = inOrder(userPointTable, pointHistoryTable);
+
+        inOrder.verify(userPointTable).insertOrUpdate(1L, 6000L);
+        inOrder.verify(pointHistoryTable).insert(eq(1L), eq(5000L), eq(TransactionType.CHARGE), anyLong());
+
     }
 
 }
