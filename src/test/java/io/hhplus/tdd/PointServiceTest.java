@@ -99,4 +99,18 @@ public class PointServiceTest {
 
     }
 
+    @Test
+    void use_fail_insufficient_point() {
+        Long userId = TestFixtures.DEFAULT_USER_ID;
+        Long useAmount = 5000L;
+
+        given(userPointTable.selectById(userId)).willReturn(TestFixtures.userPoint(3000L));
+
+        InvalidPointAmountException ex = assertThrows(InvalidPointAmountException.class, () -> pointService.use(userId, useAmount));
+
+        assertEquals("포인트가 부족합니다.", ex.getMessage());
+        then(userPointTable).should(never()).insertOrUpdate(anyLong(), anyLong());
+        then(pointHistoryTable).should(never()).insert(anyLong(), anyLong(), any(), anyLong());
+    }
+
 }
