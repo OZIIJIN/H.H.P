@@ -36,6 +36,15 @@ public class PointService {
     }
 
     public UserPoint use(Long userId, Long useAmount) {
-        return null;
+        UserPoint userPoint = userPointTable.selectById(userId);
+
+        if (userPoint.point() - useAmount < 0) {
+            throw new InvalidPointAmountException("보유 포인트가 부족합니다.");
+        }
+
+        UserPoint updatedUserPoint = userPointTable.insertOrUpdate(userPoint.id(), userPoint.point() - useAmount);
+        pointHistoryTable.insert(userPoint.id(), useAmount, TransactionType.USE, System.currentTimeMillis());
+
+        return updatedUserPoint;
     }
 }

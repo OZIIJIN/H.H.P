@@ -108,7 +108,7 @@ public class PointServiceTest {
 
         InvalidPointAmountException ex = assertThrows(InvalidPointAmountException.class, () -> pointService.use(userId, useAmount));
 
-        assertEquals("포인트가 부족합니다.", ex.getMessage());
+        assertEquals("보유 포인트가 부족합니다.", ex.getMessage());
         then(userPointTable).should(never()).insertOrUpdate(anyLong(), anyLong());
         then(pointHistoryTable).should(never()).insert(anyLong(), anyLong(), any(), anyLong());
     }
