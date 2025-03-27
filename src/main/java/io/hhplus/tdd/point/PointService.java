@@ -12,6 +12,7 @@ public class PointService {
         this.userPointTable = userPointTable;
     }
 
-    public void charge(long userId, long amount) {
+    public UserPoint charge(long userId, long amount) {
+        return null;
     }
 }
