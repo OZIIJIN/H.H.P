@@ -17,6 +17,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.web.servlet.result.RequestResultMatchers;
 
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -158,6 +160,27 @@ public class PointServiceTest {
         assertEquals(userId, result.id());
 
         then(userPointTable).should().selectById(userId);
+    }
+
+    @Test
+    void get_point_history_success() {
+        //given
+        long userId = TestFixtures.DEFAULT_USER_ID;
+
+        PointHistory history1 = TestFixtures.pointHistory(1L, userId, 2000L, TransactionType.USE);
+        PointHistory history2 = TestFixtures.pointHistory(2L, userId, 5000L, TransactionType.CHARGE);
+
+        given(pointHistoryTable.selectAllByUserId(userId)).willReturn(List.of(history1, history2));
+
+        //when
+        List<PointHistory> histories = pointService.getPointHistories(userId);
+
+        //then
+        assertEquals(2, histories.size());
+        assertEquals(2000L, histories.get(0).amount());
+        assertEquals(5000L, histories.get(1).amount());
+
+        then(pointHistoryTable).should().selectAllByUserId(userId);
     }
 
 }
