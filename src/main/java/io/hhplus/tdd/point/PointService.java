@@ -35,6 +35,7 @@ public class PointService {
         return updatedUserPoint;
     }
 
-    public void use(Long userId, Long useAmount) {
+    public UserPoint use(Long userId, Long useAmount) {
+        return null;
     }
 }

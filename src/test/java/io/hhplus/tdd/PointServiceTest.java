@@ -101,8 +101,8 @@ public class PointServiceTest {
 
     @Test
     void use_fail_insufficient_point() {
-        Long userId = TestFixtures.DEFAULT_USER_ID;
-        Long useAmount = 5000L;
+        long userId = TestFixtures.DEFAULT_USER_ID;
+        long useAmount = 5000L;
 
         given(userPointTable.selectById(userId)).willReturn(TestFixtures.userPoint(3000L));
 
@@ -111,6 +111,36 @@ public class PointServiceTest {
         assertEquals("포인트가 부족합니다.", ex.getMessage());
         then(userPointTable).should(never()).insertOrUpdate(anyLong(), anyLong());
         then(pointHistoryTable).should(never()).insert(anyLong(), anyLong(), any(), anyLong());
+    }
+
+    @Test
+    void user_success() {
+        //given
+        long userId = TestFixtures.DEFAULT_USER_ID;
+        long useAmount = 3000L;
+
+        UserPoint existingUserPoint = TestFixtures.userPoint(5000L);
+        UserPoint updatedUserPoint = TestFixtures.userPoint(2000L);
+
+        given(userPointTable.selectById(userId)).willReturn(existingUserPoint);
+        given(userPointTable.insertOrUpdate(userId, 2000L)).willReturn(updatedUserPoint);
+
+        //when
+        UserPoint result = pointService.use(userId, useAmount);
+
+
+        //then
+        assertEquals(2000L, result.point());
+
+        then(userPointTable).should().selectById(userId);
+        then(userPointTable).should().insertOrUpdate(userId, 2000L);
+        then(pointHistoryTable).should(times(1)).insert(
+                eq(userId), eq(useAmount), eq(TransactionType.USE), anyLong()
+        );
+
+        InOrder inOrder = inOrder(userPointTable, pointHistoryTable);
+        inOrder.verify(userPointTable).insertOrUpdate(userId, 2000L);
+        inOrder.verify(pointHistoryTable).insert(eq(userId), eq(useAmount), eq(TransactionType.USE), anyLong());
     }
 
 }
