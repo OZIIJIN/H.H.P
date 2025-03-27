@@ -143,4 +143,21 @@ public class PointServiceTest {
         inOrder.verify(pointHistoryTable).insert(eq(userId), eq(useAmount), eq(TransactionType.USE), anyLong());
     }
 
+    @Test
+    void get_point_success() {
+        //given
+        long userId = TestFixtures.DEFAULT_USER_ID;
+        UserPoint existingUserPoint = TestFixtures.userPoint(5000L);
+        given(userPointTable.selectById(userId)).willReturn(existingUserPoint);
+
+        //when
+        UserPoint result = pointService.getPoint(userId);
+
+        //then
+        assertEquals(5000L, result.point());
+        assertEquals(userId, result.id());
+
+        then(userPointTable).should().selectById(userId);
+    }
+
 }
