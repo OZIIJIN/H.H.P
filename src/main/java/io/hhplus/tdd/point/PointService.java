@@ -6,6 +6,8 @@ import io.hhplus.tdd.exception.ExceedMaximumPointException;
 import io.hhplus.tdd.exception.InvalidPointAmountException;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 @Service
 public class PointService {
 
@@ -33,5 +35,26 @@ public class PointService {
         pointHistoryTable.insert(userPoint.id(), amount, TransactionType.CHARGE, System.currentTimeMillis());
 
         return updatedUserPoint;
+    }
+
+    public UserPoint use(Long userId, Long useAmount) {
+        UserPoint userPoint = userPointTable.selectById(userId);
+
+        if (userPoint.point() - useAmount < 0) {
+            throw new InvalidPointAmountException("보유 포인트가 부족합니다.");
+        }
+
+        UserPoint updatedUserPoint = userPointTable.insertOrUpdate(userPoint.id(), userPoint.point() - useAmount);
+        pointHistoryTable.insert(userPoint.id(), useAmount, TransactionType.USE, System.currentTimeMillis());
+
+        return updatedUserPoint;
+    }
+
+    public UserPoint getPoint(long userId) {
+        return userPointTable.selectById(userId);
+    }
+
+    public List<PointHistory> getPointHistories(long userId) {
+        return pointHistoryTable.selectAllByUserId(userId);
     }
 }

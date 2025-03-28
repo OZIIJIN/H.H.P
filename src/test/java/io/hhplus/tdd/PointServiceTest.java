@@ -17,6 +17,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.web.servlet.result.RequestResultMatchers;
 
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -97,6 +99,88 @@ public class PointServiceTest {
         inOrder.verify(userPointTable).insertOrUpdate(1L, 6000L);
         inOrder.verify(pointHistoryTable).insert(eq(1L), eq(5000L), eq(TransactionType.CHARGE), anyLong());
 
+    }
+
+    @Test
+    void use_fail_insufficient_point() {
+        long userId = TestFixtures.DEFAULT_USER_ID;
+        long useAmount = 5000L;
+
+        given(userPointTable.selectById(userId)).willReturn(TestFixtures.userPoint(3000L));
+
+        InvalidPointAmountException ex = assertThrows(InvalidPointAmountException.class, () -> pointService.use(userId, useAmount));
+
+        assertEquals("보유 포인트가 부족합니다.", ex.getMessage());
+        then(userPointTable).should(never()).insertOrUpdate(anyLong(), anyLong());
+        then(pointHistoryTable).should(never()).insert(anyLong(), anyLong(), any(), anyLong());
+    }
+
+    @Test
+    void user_success() {
+        //given
+        long userId = TestFixtures.DEFAULT_USER_ID;
+        long useAmount = 3000L;
+
+        UserPoint existingUserPoint = TestFixtures.userPoint(5000L);
+        UserPoint updatedUserPoint = TestFixtures.userPoint(2000L);
+
+        given(userPointTable.selectById(userId)).willReturn(existingUserPoint);
+        given(userPointTable.insertOrUpdate(userId, 2000L)).willReturn(updatedUserPoint);
+
+        //when
+        UserPoint result = pointService.use(userId, useAmount);
+
+
+        //then
+        assertEquals(2000L, result.point());
+
+        then(userPointTable).should().selectById(userId);
+        then(userPointTable).should().insertOrUpdate(userId, 2000L);
+        then(pointHistoryTable).should(times(1)).insert(
+                eq(userId), eq(useAmount), eq(TransactionType.USE), anyLong()
+        );
+
+        InOrder inOrder = inOrder(userPointTable, pointHistoryTable);
+        inOrder.verify(userPointTable).insertOrUpdate(userId, 2000L);
+        inOrder.verify(pointHistoryTable).insert(eq(userId), eq(useAmount), eq(TransactionType.USE), anyLong());
+    }
+
+    @Test
+    void get_point_success() {
+        //given
+        long userId = TestFixtures.DEFAULT_USER_ID;
+        UserPoint existingUserPoint = TestFixtures.userPoint(5000L);
+        given(userPointTable.selectById(userId)).willReturn(existingUserPoint);
+
+        //when
+        UserPoint result = pointService.getPoint(userId);
+
+        //then
+        assertEquals(5000L, result.point());
+        assertEquals(userId, result.id());
+
+        then(userPointTable).should().selectById(userId);
+    }
+
+    @Test
+    void get_point_history_success() {
+        //given
+        long userId = TestFixtures.DEFAULT_USER_ID;
+
+        PointHistory history1 = TestFixtures.pointHistory(1L, userId, 2000L, TransactionType.USE);
+        PointHistory history2 = TestFixtures.pointHistory(2L, userId, 5000L, TransactionType.CHARGE);
+
+        given(pointHistoryTable.selectAllByUserId(userId)).willReturn(List.of(history1, history2));
+
+        //when
+        List<PointHistory> histories = pointService.getPointHistories(userId);
+
+        //then
+        assertEquals(2, histories.size());
+        assertEquals(2000L, histories.get(0).amount());
+        assertEquals(5000L, histories.get(1).amount());
+
+        then(pointHistoryTable).should().selectAllByUserId(userId);
     }
 
 }
